@@ -11,3 +11,5 @@
 /upload_game_results.py
 /upload_players.py
 /upload_sessions.py
+/instance
+/config.py
