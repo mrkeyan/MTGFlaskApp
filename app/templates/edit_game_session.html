@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="col-md-10 col-lg-8 mx-auto">
+  <h2 class="mb-4">Edit Game Session and Results</h2>
+  <form method="POST" action="">
+    {{ form.hidden_tag() }}
+
+    <fieldset class="mb-4">
+      <legend>Game Session Details</legend>
+      <div class="mb-3">
+        {{ form.game_date.label(class="form-label") }}
+        {{ form.game_date(class="form-control") }}
+        {% for error in form.game_date.errors %}
+          <div class="text-danger small">{{ error }}</div>
+        {% endfor %}
+      </div>
+      <div class="mb-3">
+        {{ form.gs_wincon.label(class="form-label") }}
+        {{ form.gs_wincon(class="form-control") }}
+        {% for error in form.gs_wincon.errors %}
+          <div class="text-danger small">{{ error }}</div>
+        {% endfor %}
+      </div>
+      <div class="mb-3">
+        {{ form.comments.label(class="form-label") }}
+        {{ form.comments(class="form-control", rows="3") }}
+        {% for error in form.comments.errors %}
+          <div class="text-danger small">{{ error }}</div>
+        {% endfor %}
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Game Results</legend>
+      <table class="table table-bordered table-striped align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Player</th>
+            <th>Deck</th>
+            <th>Finish</th>
+            <th>Eliminated By</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for subform in form.results %}
+            <tr>
+              <td>
+                {{ subform.player_id(class="form-select") }}
+                {% for error in subform.player_id.errors %}
+                  <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+              </td>
+              <td>
+                {{ subform.deck_id(class="form-select") }}
+                {% for error in subform.deck_id.errors %}
+                  <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+              </td>
+              <td>
+                {{ subform.finish(class="form-control", style="width: 5rem;") }}
+                {% for error in subform.finish.errors %}
+                  <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+              </td>
+              <td>
+                {{ subform.eliminated_by_id(class="form-select") }}
+                {% for error in subform.eliminated_by_id.errors %}
+                  <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </fieldset>
+
+    <button type="submit" class="btn btn-primary mt-3">{{ form.submit.label.text }}</button>
+  </form>
+</div>
+{% endblock %}

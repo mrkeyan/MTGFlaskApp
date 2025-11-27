@@ -1,0 +1,237 @@
+from flask import render_template, flash, redirect, url_for, request, jsonify
+from flask_login import login_required
+import sqlalchemy as sa
+from sqlalchemy.orm import joinedload
+from app import db
+from app.main.forms import CombinedGameEntryForm, DeckForm, DeckEditForm, PlayerEditForm, GameSessionEditForm, PlayerAddForm
+from app.models import User, Player, Deck, GameResult, GameSession
+from collections import defaultdict
+from app.main import bp
+
+
+@bp.route('/', methods=['GET', 'POST'])
+@bp.route('/index', methods=['GET', 'POST'])
+def index():
+    return render_template('index.html', title='Home Page')
+
+
+#Route for player data
+@bp.route('/player/<int:id>')
+def player_stats(id):
+    player = Player.query.get_or_404(id)
+    return render_template('player.html', player=player)
+    
+#Route for all player stats
+@bp.route('/players')
+def all_player_stats():
+    players = Player.query.order_by(Player.player_name).all()
+    return render_template('player_stats.html', players=players)
+
+#Route for adding a player
+@bp.route('/add_player', methods=['GET', 'POST'])
+@login_required
+def add_player():
+    form = PlayerAddForm()
+    if form.validate_on_submit():
+        new_player = Player(player_name=form.player_name.data)
+        db.session.add(new_player)
+        db.session.commit()
+        flash(f'Player "{new_player.player_name}" added successfully!', 'success')
+        return redirect(url_for('main.all_player_stats'))
+    return render_template('add_player.html', form=form)
+
+    
+#Route for add game
+@bp.route('/add_game',methods=['GET','POST'])
+@login_required
+def add_game():
+    form = CombinedGameEntryForm()
+
+    # Populate choices for nested game result forms
+    decks = Deck.query.all()
+    players = Player.query.all()
+    deck_choices = [(0, '--- Select Deck ---')] + [(deck.id, deck.deck_name) for deck in decks]
+    player_choices = [(0, '--- Select Player ---')] + [(player.id, player.player_name) for player in players]
+    eliminated_by_choices = [(0, '')] + [(player.id, player.player_name) for player in players]
+
+    for subform in form.results:
+        subform.deck_id.choices = deck_choices
+        subform.player_id.choices = player_choices
+        subform.eliminated_by_id.choices = eliminated_by_choices
+    
+    
+    if form.validate_on_submit():
+        new_session = GameSession(
+            game_date=form.game_date.data,
+            gs_wincon=form.gs_wincon.data,
+            comments=form.comments.data
+        )
+        db.session.add(new_session)
+        db.session.flush()
+        
+        for entry in form.results.entries:
+            data = entry.data
+            if not data['player_id'] or data['player_id'] == 0:
+                continue
+            gameresult = GameResult(
+                gr_session_id=new_session.id,
+                deck_id=data['deck_id'],
+                player_id=data['player_id'],
+                finish=data['finish'],
+                eliminated_by_id=data['eliminated_by_id'] if data['eliminated_by_id']!= 0 else None
+            )
+            db.session.add(gameresult)
+
+        db.session.commit()
+        flash('Game session and results added successfully!')
+        return redirect(url_for('main.game_results'))
+    else:
+        print(form.errors)
+
+    # For GET or failed POST, fetch game results and render template with form
+    flash('did not work')
+    return render_template('add_game_entry.html', form=form)
+
+
+
+#Route for all game results
+@bp.route('/game_results')
+def game_results():
+    # For GET or failed POST, fetch game results and render template with form
+    results = GameResult.query.order_by(GameResult.gr_session_id.desc(), GameResult.finish).all()
+    
+    sessions = defaultdict(list)
+    for r in results:
+        sessions[r.gr_session_id].append(r)
+    return render_template('game_log.html', sessions=sessions)
+
+@bp.route('/decks')
+def all_deck_stats():
+    #decks = Deck.query.order_by(Deck.owner_id).all()
+    decks = (
+        db.session.query(Deck)
+        .options(joinedload(Deck.deck_owner))
+        .join(Player, Deck.owner_id == Player.id)
+        .order_by(Player.player_name)
+        .all()
+    )
+    return render_template('deck_stats.html', decks=decks)
+
+@bp.route('/get_decks_for_player/<int:player_id>')
+@login_required
+def get_decks_for_player(player_id):
+    decks = Deck.query.filter_by(owner_id=player_id).all()
+    deck_list = [{'id': deck.id, 'name': deck.deck_name} for deck in decks]
+    return jsonify(deck_list)
+
+@bp.route('/add_deck', methods=['GET', 'POST'])
+@login_required
+def add_deck():
+    form = DeckForm()
+    form.populate_choices()
+
+    if form.validate_on_submit():
+        new_deck = Deck(
+            deck_name=form.deck_name.data,
+            color_identity_code=form.color_identity_code.data,
+            owner_id=form.owner_id.data
+        )
+        db.session.add(new_deck)
+        db.session.commit()
+        flash(f'Deck "{new_deck.deck_name}" added successfully!', 'success')
+        return redirect(url_for('main.all_deck_stats'))  # or wherever you want to go next
+
+    return render_template('add_deck.html', form=form)
+
+@bp.route('/deck/edit/<int:deck_id>', methods=['GET', 'POST'])
+@login_required
+def edit_deck(deck_id):
+    deck = Deck.query.get_or_404(deck_id)
+    form = DeckEditForm(obj=deck)
+    form.populate_choices()
+
+    if form.validate_on_submit():
+        deck.deck_name = form.deck_name.data
+        deck.color_identity_code = form.color_identity_code.data
+        deck.owner_id = form.owner_id.data
+        db.session.commit()
+        flash('Deck updated successfully!')
+        return redirect(url_for('main.all_deck_stats'))
+    return render_template('edit_deck.html', form=form, deck=deck)
+
+@bp.route('/player/edit/<int:player_id>', methods=['GET', 'POST'])
+@login_required
+def edit_player(player_id):
+    player = Player.query.get_or_404(player_id)
+    form = PlayerEditForm(obj=player)  # pre-fill form with player data
+
+    if form.validate_on_submit():
+        player.player_name = form.player_name.data
+        db.session.commit()
+        flash('Player updated successfully!', 'success')
+        return redirect(url_for('main.all_player_stats'))
+
+    return render_template('edit_player.html', form=form, player=player)
+
+
+@bp.route('/game_session/edit/<int:session_id>', methods=['GET', 'POST'])
+@login_required
+def edit_game_session(session_id):
+    session = GameSession.query.get_or_404(session_id)
+    form = GameSessionEditForm()
+
+    # Prepare choices for nested forms
+    decks = Deck.query.all()
+    players = Player.query.all()
+    deck_choices = [(0, '--- Select Deck ---')] + [(deck.id, deck.deck_name) for deck in decks]
+    player_choices = [(0, '--- Select Player ---')] + [(player.id, player.player_name) for player in players]
+    eliminated_choices = [(0, '')] + player_choices[1:]
+
+    # Populate choices for each nested game result form in the form field list
+    for subform in form.results:
+        subform.deck_id.choices = deck_choices
+        subform.player_id.choices = player_choices
+        subform.eliminated_by_id.choices = eliminated_choices
+
+    if request.method == 'GET':
+        # Pre-fill form fields from session and its game results
+        form.game_date.data = session.game_date
+        form.gs_wincon.data = session.gs_wincon
+        form.comments.data = session.comments
+
+        # Populate each nested form with existing game result data
+        game_results = sorted(session.results, key=lambda r: r.finish)  # or some stable order
+        for i, gameresult in enumerate(game_results):
+            if i < len(form.results):
+                form.results[i].deck_id.data = gameresult.deck_id
+                form.results[i].player_id.data = gameresult.player_id
+                form.results[i].finish.data = gameresult.finish
+                form.results[i].eliminated_by_id.data = gameresult.eliminated_by_id or 0  # handle None
+            else:
+                break
+
+    elif form.validate_on_submit():
+        # Update session fields
+        session.game_date = form.game_date.data
+        session.gs_wincon = form.gs_wincon.data
+        session.comments = form.comments.data
+
+        # Update each game result
+        game_results = sorted(session.results, key=lambda r: r.finish)
+        for i, entry in enumerate(form.results.entries):
+            data = entry.data
+            if i < len(game_results):
+                gr = game_results[i]
+                gr.deck_id = data['deck_id']
+                gr.player_id = data['player_id']
+                gr.finish = data['finish']
+                gr.eliminated_by_id = data['eliminated_by_id'] if data['eliminated_by_id'] != 0 else None
+            else:
+                # Optional: handle case where more results submitted than exist
+                pass
+
+        db.session.commit()
+        flash('Game session and results updated successfully!')
+        return redirect(url_for('main.game_results'))
+
+    return render_template('edit_game_session.html', form=form, session=session)

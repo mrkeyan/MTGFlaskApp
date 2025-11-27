@@ -1,0 +1,13 @@
+/.flaskenv
+/DB_Update_Steps
+/__pycache__
+/data_upload
+/env
+/logs
+/requirements.txt
+/skipped_rows.xlsx
+/upload_color_identity.py
+/upload_decks.py
+/upload_game_results.py
+/upload_players.py
+/upload_sessions.py

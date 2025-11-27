@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="mb-4">Edit Player: {{ player.player_name }}</h2>
+<div class="col-md-6 col-lg-4">
+<form method="POST" action="">
+  {{ form.hidden_tag() }}
+
+  <div class="mb-3">
+    {{ form.player_name.label(class="form-label") }}
+    {{ form.player_name(class="form-control", size=40) }}
+    {% for error in form.player_name.errors %}
+      <div class="text-danger small">{{ error }}</div>
+    {% endfor %}
+  </div>
+
+  <button type="submit" class="btn btn-primary">{{ form.submit.label.text }}</button>
+</form>
+</div>
+{% endblock %}

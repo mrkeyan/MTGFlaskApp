@@ -1,0 +1,114 @@
+{% extends "index.html" %}
+{% block content %}
+<div class="col-md-10 col-lg-8">  
+<h2 class="mb-4">Add New Game Session and Game Results</h2>
+  <form method="POST" action="">
+    {{ form.hidden_tag() }}
+
+    <fieldset class="mb-4">
+      <legend>Game Session Details</legend>
+      <div class="mb-3">
+        {{ form.game_date.label(class="form-label") }}
+        {{ form.game_date(class="form-control") }}
+        {% for error in form.game_date.errors %}
+          <div class="text-danger small">{{ error }}</div>
+        {% endfor %}
+      </div>
+      <div class="mb-3">
+        {{ form.gs_wincon.label(class="form-label") }}
+        {{ form.gs_wincon(class="form-control") }}
+        {% for error in form.gs_wincon.errors %}
+          <div class="text-danger small">{{ error }}</div>
+        {% endfor %}
+      </div>
+      <div class="mb-3">
+        {{ form.comments.label(class="form-label") }}
+        {{ form.comments(class="form-control", rows="3") }}
+        {% for error in form.comments.errors %}
+          <div class="text-danger small">{{ error }}</div>
+        {% endfor %}
+      </div>
+    </fieldset>
+
+    <fieldset class="mb-4">
+      <legend>Game Results</legend>
+      <table class="table table-striped table-bordered align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Player</th>
+            <th>Deck</th>
+            <th>Finish (Place)</th>
+            <th>Eliminated By</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for subform in form.results %}
+            <tr>
+              <td>
+                {{ subform.player_id(class="form-select") }}
+                {% for error in subform.player_id.errors %}
+                  <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+              </td>
+              <td>
+                {{ subform.deck_id(class="form-select") }}
+                {% for error in subform.deck_id.errors %}
+                  <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+              </td>
+              <td>
+                {{ subform.finish(class="form-control", style="width: 5rem;") }}
+                {% for error in subform.finish.errors %}
+                  <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+              </td>
+              <td>
+                {{ subform.eliminated_by_id(class="form-select") }}
+                {% for error in subform.eliminated_by_id.errors %}
+                  <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </fieldset>
+
+    <button type="submit" class="btn btn-primary">{{ form.submit.label.text }}</button>
+  </form>
+</div>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const playerSelects = document.querySelectorAll('select[name$="player_id"]');
+    playerSelects.forEach(playerSelect => {
+      playerSelect.addEventListener('change', (event) => {
+        const selectedPlayerId = event.target.value;
+        // Find the corresponding deck select (assuming same form row)
+        const formRow = event.target.closest('tr');
+        const deckSelect = formRow.querySelector('select[name$="deck_id"]');
+
+        if (!deckSelect) return;
+
+        // Clear deck options
+        deckSelect.innerHTML = '<option value="0">--- Select Deck ---</option>';
+
+        if (selectedPlayerId == 0) {
+          return;  // no player selected, leave deck blank
+        }
+
+        fetch(`/get_decks_for_player/${selectedPlayerId}`)
+          .then(response => response.json())
+          .then(data => {
+            data.forEach(deck => {
+              const option = document.createElement('option');
+              option.value = deck.id;
+              option.textContent = deck.name;
+              deckSelect.appendChild(option);
+            });
+          })
+          .catch(err => console.error('Error fetching decks:', err));
+      });
+    });
+  });
+</script>
+{% endblock %}

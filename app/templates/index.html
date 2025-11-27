@@ -1,0 +1,12 @@
+{% extends 'base.html'%}
+
+{% block head %}
+
+{%endblock%}
+
+{% block content%}
+    <h1>MTG Stats</h1>
+    {% if not current_user.is_anonymous %}
+    <h1>Hi, {{current_user.username}}!</h1>
+    {% endif %}
+{% endblock %}
