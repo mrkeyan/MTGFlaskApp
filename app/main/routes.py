@@ -235,3 +235,70 @@ def edit_game_session(session_id):
         return redirect(url_for('main.game_results'))
 
     return render_template('edit_game_session.html', form=form, session=session)
+
+
+
+#API routes
+@bp.route('/api/players')
+def api_players():
+    """JSON endpoint for player stats table"""
+    players = Player.query.order_by(Player.player_name).all()
+    return jsonify([{
+        'id': p.id,
+        'player_name': p.player_name,
+        'wins': p.wins,  # Uses @property
+        'total_games': p.total_games,
+        'win_rate': float(p.win_rate)  # ✅ Raw decimal 0.42, NOT formatted string
+    } for p in players])
+
+@bp.route('/api/decks')
+def api_decks():
+    decks = Deck.query.options(joinedload(Deck.deck_owner)).all()
+    
+    deck_data = []
+    for deck in decks:
+        # Calculate win_rate from GameResult
+        total_games = db.session.query(GameResult).filter_by(deck_id=deck.id).count()
+        wins = db.session.query(GameResult).filter_by(deck_id=deck.id, finish=1).count()
+        win_rate = wins / total_games if total_games > 0 else 0
+        
+        deck_data.append({
+            'id': deck.id,
+            'deck_name': deck.deck_name,
+            'color_identity': getattr(deck.color_identity_rel, 'identity_name', deck.color_identity_code or ''),
+            'deck_owner': deck.deck_owner.player_name if deck.deck_owner else 'N/A',
+            'win_rate': win_rate,  # ← Raw number (0.42), not percentage string
+            'edit_url': url_for('main.edit_deck', deck_id=deck.id)
+        })
+    
+    print(f"API decks data: {deck_data[:2]}")  # Debug first 2 decks
+    return jsonify(deck_data)
+
+@bp.route('/api/game_sessions')
+def api_game_sessions():
+    """JSON endpoint for game results/sessions"""
+    results = GameResult.query.options(
+        joinedload(GameResult.gr_session),
+        joinedload(GameResult.player),
+        joinedload(GameResult.deck),
+        joinedload(GameResult.eliminated_by)
+    ).order_by(GameResult.gr_session_id.desc(), GameResult.finish).all()
+    
+    sessions = {}
+    for r in results:
+        session_id = r.gr_session_id
+        if session_id not in sessions:
+            sessions[session_id] = {
+                'session_id': session_id,
+                'date': r.gr_session.game_date.strftime('%Y-%m-%d') if r.gr_session else '',
+                'wincon': r.gr_session.gs_wincon or '',
+                'results': []
+            }
+        sessions[session_id]['results'].append({
+            'finish': r.finish,
+            'player': r.player.player_name if r.player else '',
+            'deck': r.deck.deck_name if r.deck else '',
+            'eliminated_by': r.eliminated_by.player_name if r.eliminated_by else ''
+        })
+    
+    return jsonify(list(sessions.values()))
