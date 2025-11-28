@@ -13,3 +13,7 @@
 /upload_sessions.py
 /instance
 /config.py
+/server_and_app_info.txt
+/*.csv
+/exportdb.py
+/*.db
