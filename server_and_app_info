@@ -1,0 +1,39 @@
+#ensure app is not running
+
+flask db migrate
+flask db upgrade
+
+
+#query sqlite
+sqlite3 your_database_name.db
+.tables
+.quit
+
+(venv) $ flask shell
+>>> db
+<SQLAlchemy sqlite:////home/miguel/microblog/app.db>
+>>> User
+<class 'app.models.User'>
+>>> Post
+<class 'app.models.Post'>
+
+
+Login:
+Keyan
+pw:
+horse828
+
+To                         Action      From
+--                         ------      ----
+22/tcp                     ALLOW IN    Anywhere                  
+80/tcp                     ALLOW IN    Anywhere                  
+443/tcp                    ALLOW IN    Anywhere                  
+5000/tcp                   ALLOW IN    Anywhere                  
+52170/tcp                  ALLOW IN    Anywhere                  
+22/tcp (v6)                ALLOW IN    Anywhere (v6)             
+80/tcp (v6)                ALLOW IN    Anywhere (v6)             
+443/tcp (v6)               ALLOW IN    Anywhere (v6)             
+5000/tcp (v6)              ALLOW IN    Anywhere (v6)             
+52170/tcp (v6)             ALLOW IN    Anywhere (v6)  
+
+sudo ufw status verbose
