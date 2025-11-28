@@ -101,7 +101,7 @@ class Player(db.Model):
 
 class ColorIdentity(db.Model):
     __tablename__ = 'color_identity'
-    code: so.Mapped[str] = so.mapped_column(sa.String(1), primary_key=True)  # 'W', 'U', etc
+    code: so.Mapped[str] = so.mapped_column(sa.String(5), primary_key=True)  # 'W', 'U', etc
     identity_name: so.Mapped[str] = so.mapped_column(sa.String(20), nullable=False)   # 'White', 'Blue', etc
     
     decks: so.Mapped[list["Deck"]] = so.relationship("Deck", back_populates="color_identity_rel")

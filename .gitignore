@@ -1,6 +1,6 @@
 /.flaskenv
 /DB_Update_Steps
-/__pycache__
+__pycache__/
 /data_upload
 /env
 /logs
