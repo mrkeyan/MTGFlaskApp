@@ -37,3 +37,15 @@ To                         Action      From
 52170/tcp (v6)             ALLOW IN    Anywhere (v6)  
 
 sudo ufw status verbose
+
+
+echo "MTG stats test from VPS - Postfix + DKIM working!" | mail -s "Test: mtg.keyankwan.com" mrkeyan@hotmail.com
+tail -f /var/log/mail.log
+user: mtgstats
+pw:Mtgstats-sql12
+
+
+
+sudo cp /home/ubuntu/MTGFlaskApp/user.csv /home/vpsprod/mtgflaskapp/user.csv && sudo chown vpsprod:vpsprod /home/vpsprod/mtgflaskapp/user.csv
+
+https://postmaster.google.com/u/0/managedomains?pli=1

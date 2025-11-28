@@ -4,7 +4,6 @@
 /data_upload
 /env
 /logs
-/requirements.txt
 /skipped_rows.xlsx
 /upload_color_identity.py
 /upload_decks.py
@@ -13,3 +12,7 @@
 /upload_sessions.py
 /instance
 /config.py
+/*.csv
+/exportdb.py
+/*.db
+/server_and_app_info
