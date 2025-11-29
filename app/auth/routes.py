@@ -35,14 +35,21 @@ def login():
 def register():
     if current_user.is_authenticated:
         return redirect(url_for('main.index'))
+    
     form = RegistrationForm()
     if form.validate_on_submit():
-        user = User(username=form.username.data, email=form.email.data)
+        # Link existing Player to new User
+        user = User(username=form.username.data,
+                   email=form.email.data,
+                   player_id=form.player.data.id)  # Use selected player
         user.set_password(form.password.data)
         db.session.add(user)
         db.session.commit()
-        flash('Congratulations, you are now a registered user!')
-        return redirect(url_for('auth.login'))
+        
+        flash('Congratulations! Your account is linked to player "{}"!'.format(
+            form.player.data.player_name))
+        return redirect(url_for('main.index'))
+    
     return render_template('auth/register.html', title='Register', form=form)
 
 #Route for logout

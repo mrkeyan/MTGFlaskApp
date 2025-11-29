@@ -19,7 +19,8 @@
       <title>Welcome to Key's Commander Stat Tracker</title>
       {% endif %}
 </head>
-<body class="h-100" data-user-logged-in="{% if not current_user.is_anonymous %}true{% else %}false{% endif %}">
+<body data-user-logged-in="{{ current_user.is_authenticated|tojson|safe }}"
+      data-user-is-admin="{{ current_user.is_admin|default(false)|tojson|safe }}">
     <header class="container my-4">
         <h1 class="text-center">Key-MTGCST</h1>
         <nav class="navbar navbar-expand-lg navbar-light bg-light">
@@ -47,7 +48,7 @@
                         <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('main.all_deck_stats') }}">Decks</a>
                         </li>
-                        {% if not current_user.is_anonymous %}
+                        {% if current_user.is_authenticated and current_user.is_admin %}
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" id="navbarDropdownMenuLink" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 Admin
@@ -56,6 +57,7 @@
                                 <li><a class="dropdown-item" href="{{ url_for('main.add_player') }}">Add Player</a></li>
                                 <li><a class="dropdown-item" href="{{ url_for('main.add_game') }}">Add Game</a></li>
                                 <li><a class="dropdown-item" href="{{ url_for('main.add_deck') }}">Add Deck</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('admin.index') }}">Admin Panel</a></li>
                             </ul>
                         </li>
                         {% endif %}

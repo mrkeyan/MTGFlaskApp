@@ -8,12 +8,13 @@
 <div class="container col-md-10 col-lg-8">
   <h1 class="mb-4">Game Logs</h1>
 
-  <table class="table table-bordered table-hover table-striped">
+  <table class="table table-bordered table-hover table-striped" data-user-logged-in="{{ current_user.is_authenticated|tojson|safe }}"
+      data-user-is-admin="{{ current_user.is_admin|default(false)|tojson|safe }}">
     <thead class="table-light">
       <tr>
         <th scope="col">Session ID</th>
         <th scope="col">Game Results</th>
-        {% if not current_user.is_anonymous %}
+        {% if current_user.is_authenticated and current_user.is_admin %}
         <th scope="col"></th>
         {% endif %}
       </tr>
@@ -34,7 +35,7 @@
             </thead>
           </table>
         </td>
-        {% if not current_user.is_anonymous %}
+        {% if current_user.is_authenticated and current_user.is_admin %}
         <td></td>
         {% endif %}
       </tr>
@@ -58,7 +59,7 @@
         </tbody>
       </table>
     </td>
-    {% if not current_user.is_anonymous %}
+    {% if current_user.is_authenticated and current_user.is_admin %}
     <td class="align-middle">
       <a href="{{ url_for('main.edit_game_session', session_id=session_id) }}" class="btn btn-primary btn-sm">Edit</a>
     </td>

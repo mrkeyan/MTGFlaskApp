@@ -2,6 +2,7 @@ from datetime import date, datetime, timezone
 from typing import Optional
 import sqlalchemy as sa
 import sqlalchemy.orm as so
+from sqlalchemy import Table
 from flask_login import UserMixin
 from flask import current_app
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -17,6 +18,7 @@ class User(UserMixin, db.Model):
     email: so.Mapped[str] = so.mapped_column(sa.String(120), index=True, unique=True)
     password_hash: so.Mapped[Optional[str]] = so.mapped_column(sa.String(256))
 
+    is_admin: so.Mapped[bool] = so.mapped_column(sa.Boolean, default=False, nullable=True)
     # One-to-one relation to Player
     player_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('player.id'), nullable=True, unique=True)
     player: so.Mapped["Player"] = so.relationship("Player", back_populates="user", uselist=False)
@@ -101,25 +103,59 @@ class Player(db.Model):
 
 class ColorIdentity(db.Model):
     __tablename__ = 'color_identity'
-    code: so.Mapped[str] = so.mapped_column(sa.String(5), primary_key=True)  # 'W', 'U', etc
-    identity_name: so.Mapped[str] = so.mapped_column(sa.String(20), nullable=False)   # 'White', 'Blue', etc
+    code: so.Mapped[str] = so.mapped_column(sa.String(5), primary_key=True)
+    identity_name: so.Mapped[str] = so.mapped_column(sa.String(20), nullable=False)
     
-    decks: so.Mapped[list["Deck"]] = so.relationship("Deck", back_populates="color_identity_rel")
+    deck_colors: so.Mapped[list["DeckColor"]] = so.relationship(
+        "DeckColor", back_populates="color"
+    )
+
+class DeckColor(db.Model):
+    __tablename__ = 'deck_colors'
+    
+    id: so.Mapped[int] = so.mapped_column(primary_key=True)
+    deck_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('deck.id'), nullable=False, index=True)
+    color_id: so.Mapped[str] = so.mapped_column(sa.ForeignKey('color_identity.code'), nullable=False, index=True)
+    
+    __table_args__ = (sa.UniqueConstraint('deck_id', 'color_id', name='uq_deck_color'),)
+    
+    deck: so.Mapped["Deck"] = so.relationship("Deck", back_populates="deck_colors")
+    color: so.Mapped["ColorIdentity"] = so.relationship("ColorIdentity", back_populates="deck_colors")
 
 class Deck(db.Model):
     __tablename__ = 'deck'
     id: so.Mapped[int] = so.mapped_column(primary_key=True)
     deck_name: so.Mapped[str] = so.mapped_column(sa.String(100), nullable=False, unique=True)
     color_identity_code: so.Mapped[str] = so.mapped_column(sa.ForeignKey('color_identity.code'), nullable=False)
-    color_identity_rel: so.Mapped[ColorIdentity] = so.relationship("ColorIdentity", back_populates="decks")
+    color_identity_rel: so.Mapped[ColorIdentity] = so.relationship("ColorIdentity")
     
     # Owner foreign key
     owner_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('player.id'), nullable=True)
     deck_owner: so.Mapped["Player"] = so.relationship("Player", back_populates="decks")
     
+    # NEW: DeckColor relationships
+    deck_colors: so.Mapped[list["DeckColor"]] = so.relationship(
+        "DeckColor", back_populates="deck", cascade="all, delete-orphan",overlaps="decks"
+    )
+    
+    # SIMPLIFIED - no primaryjoin/secondaryjoin
+    colors: so.Mapped[list["ColorIdentity"]] = so.relationship(
+        "ColorIdentity",
+        secondary="deck_colors",
+        viewonly=True  # Read-only, no writes needed
+    )   
+    
     games: so.Mapped[list["GameResult"]] = so.relationship("GameResult", back_populates="deck")
-    def __repr__(self):
-        return f"<Deck {self.deck_name} ({self.color_identity})>"
+        
+    @property
+    def color_count(self) -> int:
+        """Number of colors in this deck (1-5)"""
+        return len(self.colors)
+    
+    @property
+    def is_five_color(self) -> bool:
+        """True if deck uses all 5 colors"""
+        return self.color_count == 5
     
     @property
     def wins(self):    
@@ -153,7 +189,7 @@ class Deck(db.Model):
         return (self.wins / self.total_valid_games) if self.total_valid_games > 0 else 0
 
     def __repr__(self):
-        return f"<Deck {self.deck_name} ({self.color_identity_rel.name})>"
+        return f"<Deck {self.deck_name} ({self.color_identity_rel})>"
 
 class GameSession(db.Model):
     __tablename__ = 'game_session'

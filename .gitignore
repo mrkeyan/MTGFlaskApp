@@ -1,6 +1,7 @@
 /.flaskenv
 /DB_Update_Steps
 __pycache__/
+app/__pycache__
 /data_upload
 /env
 /logs
@@ -18,3 +19,12 @@ __pycache__/
 /exportdb.py
 /*.db
 /venv
+.env
+*.pyc
+*.pyo
+*$py.class
+app/__pycache__/
+/migrations/__pycache__/
+to-do.txt
+additional_scripts/
+populate_colors.py

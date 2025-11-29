@@ -1,11 +1,12 @@
 document.addEventListener('DOMContentLoaded', () => {
     const isUserLoggedIn = document.body.dataset.userLoggedIn === 'true';
+    const isUserAdmin = document.body.dataset.userIsAdmin === 'true';  // NEW
 
     // Helper to add Edit button column conditionally
     function addEditColumn(columns, entity) {
-        if (isUserLoggedIn) {
+        if (isUserLoggedIn && isUserAdmin) {  // CHANGED: Admin only
             columns.push({
-                title: "Edit",
+                title: "",
                 formatter: function(cell) {
                     const id = cell.getRow().getData().id;
                     return `<a href="/${entity}/edit/${id}" class="btn btn-sm btn-outline-primary">Edit</a>`;
@@ -13,7 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 hozAlign: "center",
                 width: 90,
                 headerSort: false,
-                frozen: true  // optional: keep edit at left/right
+                frozen: true
             });
         }
     }
@@ -59,10 +60,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const playerTable = document.getElementById('playerTable');
     if (playerTable) {
         const columns = [
-            {title: "ID", field: "id", sorter: "number", width: 80},
-            {title: "Player Name", field: "player_name", sorter: "string", headerFilter: "input"},
-            {title: "Wins", field: "wins", sorter: "number", width: 100},
-            {title: "Total Games", field: "total_games", sorter: "number", width: 120},
+            {title: "Player", field: "player_name", sorter: "string", responsive:0},
+            {title: "Wins", field: "wins", sorter: "number", responsive:0},
+            {title: "Total Games", field: "total_games", sorter: "number", responsive:2},
             { 
                 title: "Win Rate", 
                 field: "win_rate", 
@@ -72,7 +72,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     const value = Number(cell.getValue()) || 0;
                     return (value * 100).toFixed(1) + "%";
                 },
-                headerFilter: "input"
+                 responsive:0,
+                 resizable:false
             }
         ];
         addEditColumn(columns, "player");
@@ -84,7 +85,9 @@ document.addEventListener('DOMContentLoaded', () => {
             paginationSize: 25,
             paginationSizeSelector: [10, 25, 50, 100],
             rowHeight: 60,
-            columns: columns
+            columns: columns,
+            responsiveLayout:"collapse",
+            layoutColumnsOnNewData:true
         });
     }
 });
