@@ -287,18 +287,6 @@ document.addEventListener('DOMContentLoaded', async function() {
             if (deckLoadingEl) deckLoadingEl.remove();
             if (deckTitleEl) deckTitleEl.textContent = 'WUBRG Distribution';
 
-            // CUSTOM MTG MANA COLORS by code
-            const mtgColors = {
-                'W': '#F5DEB3',  // Plains (Wheat/Antique White)
-                'U': '#4169E1',  // Island (Royal Blue)  
-                'B': '#2F4F4F',  // Swamp (Dark Slate Gray)
-                'R': '#DC143C',  // Mountain (Crimson)
-                'G': '#228B22',  // Forest (Forest Green)
-                'C': '#C0C0C0'   // Colorless (Silver)
-            };
-
-            // OFFICIAL Scryfall Commander Identity Colors
-
 
             const chartColors = wubrgColors.map(c => commanderColors[c.color] || '#6c757d');
 

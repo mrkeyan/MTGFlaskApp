@@ -12,7 +12,7 @@
       data-user-is-admin="{{ current_user.is_admin|default(false)|tojson|safe }}">
     <thead class="table-light">
       <tr>
-        <th scope="col">Session ID</th>
+        <th scope="col">ID</th>
         <th scope="col">Game Results</th>
         {% if current_user.is_authenticated and current_user.is_admin %}
         <th scope="col"></th>
@@ -51,7 +51,7 @@
           {% for result in results %}
             <tr class="{{ stripe_class }}">
               <td class="col-2">{{ result.player.player_name }}</td>
-              <td class="col-4; commander-hover" data-card-name={{ result.deck.deck_name }}" style="cursor: pointer; color: #007bff;">{{ result.deck.deck_name }}</td>
+              <td class="col-4" style="cursor: pointer;">{{ result.deck.deck_name }}</td>
               <td class="col-1">{{ result.finish }}</td>
               <td class="col-2">{% if result.eliminated_by %}{{ result.eliminated_by.player_name }}{% else %}—{% endif %}</td>
             </tr>

@@ -30,6 +30,8 @@ class User(UserMixin, db.Model):
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password):
+        if self.password_hash is None:
+            return False
         return check_password_hash(self.password_hash, password)
     
     def get_reset_password_token(self, expires_in=600):
@@ -60,10 +62,16 @@ class Player(db.Model):
     user: so.Mapped["User"] = so.relationship("User", back_populates="player", uselist=False)
     
     # Games played by this player
-    games: so.Mapped[list["GameResult"]] = so.relationship("GameResult", back_populates="player", foreign_keys='[GameResult.player_id]')
+    games: so.Mapped[list["GameResult"]] = so.relationship(
+        "GameResult", 
+        back_populates="player", 
+        foreign_keys="[GameResult.player_id]"  # String → Column reference
+    )
     
     #one-to-many relationship to decks owned by this player
     decks: so.Mapped[list["Deck"]] = so.relationship("Deck", back_populates="deck_owner", cascade="all, delete-orphan")
+    
+    __table_args__ = (sa.Index('ix_player_player_name', 'player_name'),)
     
     @property
     def wins(self):

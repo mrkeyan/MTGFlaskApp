@@ -310,69 +310,68 @@ def api_game_sessions():
 
 @bp.route('/api/dashboard/kpis')
 def api_dashboard_kpis():
-    """Single endpoint for all dashboard KPIs"""
-    # Total games
     total_games = db.session.query(sa.func.count(GameResult.id)).scalar()
-    
-    # Unique players with games
     player_count = db.session.query(sa.func.count(sa.distinct(GameResult.player_id))).scalar()
-    
-    # Average winrate
     avg_winrate = db.session.query(
         sa.func.avg((GameResult.finish == 1).cast(sa.Float))
     ).filter(GameResult.finish.isnot(None)).scalar() or 0
     
-    # Top deck
+    # ✅ FIXED: Proper JOIN for top deck
     top_deck = db.session.query(
         Deck.deck_name, 
         sa.func.count(GameResult.id).label('wins')
     ).join(GameResult, Deck.id == GameResult.deck_id)\
      .filter(GameResult.finish == 1)\
-     .group_by(Deck.id).order_by(sa.desc('wins')).first()
+     .group_by(Deck.id, Deck.deck_name)\
+     .order_by(sa.desc('wins')).first()
     
     top_deck_wins = top_deck.wins if top_deck else 0
     top_deck_name = top_deck.deck_name if top_deck else 'None'
-    
-    # Total decks
     total_decks = Deck.query.count()
     
     return jsonify({
-        'total_games': total_games,
-        'player_count': player_count,
-        'avg_winrate': float(avg_winrate),  # 0.42 format
+        'total_games': total_games or 0,
+        'player_count': player_count or 0,
+        'avg_winrate': float(avg_winrate),
         'top_deck_wins': top_deck_wins,
         'top_deck_name': top_deck_name,
-        'total_decks': total_decks
+        'total_decks': total_decks or 0
     })
 
 # 1st Chart: WUBRG from DeckColor (SINGLE COLORS)
 @bp.route('/api/dashboard/colors')
 def api_dashboard_colors():
-    """WUBRG distribution from Deck → DeckColor → SINGLE COLORS"""
+    """WUBRG from Deck → DeckColor → ColorIdentity (SINGLE COLORS)"""
     color_data = db.session.query(
-        ColorIdentity.code,  # W, U, B, R, G, C
-        ColorIdentity.identity_name,  # White, Blue, Black, Red, Green, Colorless
+        ColorIdentity.code,
+        ColorIdentity.identity_name,
         sa.func.count(DeckColor.id).label('count')
-    ).join(DeckColor).group_by(ColorIdentity.code, ColorIdentity.identity_name)\
-     .having(ColorIdentity.code.in_(['W', 'U', 'B', 'R', 'G','C']))\
-     .order_by(sa.desc('count')).all()
-    
-    return jsonify([{
-        'color': c.code, 'name': c.identity_name, 'count': int(c.count)
-    } for c in color_data])
-
-# 2nd Chart: Commander Identities from Deck.color_identity_code
-@bp.route('/api/dashboard/commander-identities')
-def api_dashboard_commander_identities():
-    """Commander identities (Izzet, Golgari, etc.) from Deck.color_identity_code"""
-    identity_data = db.session.query(
-        ColorIdentity.code,  # WUR, BG, W, etc.
-        ColorIdentity.identity_name,  # Jeskai, Golgari, Mono-White
-        sa.func.count(Deck.id).label('count')
-    ).join(Deck, ColorIdentity.code == Deck.color_identity_code)\
+    ).join(DeckColor, ColorIdentity.code == DeckColor.color_id)\
+     .join(Deck, DeckColor.deck_id == Deck.id)\
+     .filter(ColorIdentity.code.in_(['W', 'U', 'B', 'R', 'G', 'C']))\
      .group_by(ColorIdentity.code, ColorIdentity.identity_name)\
      .order_by(sa.desc('count')).all()
     
     return jsonify([{
-        'color': c.code, 'name': c.identity_name, 'count': int(c.count)
-    } for c in identity_data])
+        'color': c.code,
+        'name': c.identity_name,
+        'count': c.count  # Remove int() wrapper
+    } for c in color_data])
+
+@bp.route('/api/dashboard/commander-identities')
+def api_dashboard_commander_identities():
+    """Commander identities from Deck.color_identity_code (with fallback)"""
+    identity_data = db.session.query(
+        Deck.color_identity_code.label('code'),
+        sa.func.coalesce(ColorIdentity.identity_name, Deck.color_identity_code).label('name'),
+        sa.func.count(Deck.id).label('count')
+    ).outerjoin(ColorIdentity, Deck.color_identity_code == ColorIdentity.code)\
+     .filter(Deck.color_identity_code.isnot(None))\
+     .group_by(Deck.color_identity_code, ColorIdentity.identity_name)\
+     .order_by(sa.desc('count')).all()
+    
+    return jsonify([{
+        'color': row.code,
+        'name': row.name,
+        'count': row.count  # No int() needed
+    } for row in identity_data])
