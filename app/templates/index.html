@@ -5,8 +5,397 @@
 {%endblock%}
 
 {% block content%}
-    <h1>MTG Stats</h1>
     {% if not current_user.is_anonymous %}
     <h1>Hi, {{current_user.username}}!</h1>
     {% endif %}
+<div class="container-fluid px-4 py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="display-5 fw-bold mb-1">
+                <i class="bi bi-card-text me-3 text-primary"></i>
+            MTG Commander Stats
+            </h1>
+            <p class="text-muted mb-0">Live analytics for <span data-kpi="total-games">{{ total_games }}</span> games</p>
+        </div>
+    </div>
+
+    <!-- KPIs Row -->
+    <div class="row mb-4 g-3">
+        <!-- Top Deck Wins -->
+        <div class="col-xl-3 col-md-6">
+            <div class="card border-0 shadow-sm h-100 text-center">
+                <div class="card-body py-4">
+                    <i class="bi bi-trophy fs-1 text-warning mb-2"></i>
+                    <p class="text-muted mb-0">Top Deck Wins</p>
+                    <h3 class="fw-bold text-warning mb-1" data-kpi="top-deck-wins">0</h3>
+                    <p class="text-muted mb-0 small" data-kpi="top-deck-name">Loading...</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Average Winrate -->
+        <div class="col-xl-3 col-md-6">
+            <div class="card border-0 shadow-sm h-100 text-center">
+                <div class="card-body py-4">
+                    <i class="bi bi-graph-up fs-1 text-success mb-2"></i>
+                    <p class="text-muted mb-0">Avg Winrate</p>
+                    <h3 class="fw-bold text-success mb-1" data-kpi="avg-winrate">0%</h3>
+                    
+                </div>
+            </div>
+        </div>
+        
+        <!-- Player Count -->
+        <div class="col-xl-3 col-md-6">
+            <div class="card border-0 shadow-sm h-100 text-center">
+                <div class="card-body py-4">
+                    <i class="bi bi-people fs-1 text-info mb-2"></i>
+                    <p class="text-muted mb-0">Active Players</p>
+                    <h3 class="fw-bold text-info mb-1" data-kpi="player-count">0</h3>
+                    
+                </div>
+            </div>
+        </div>
+        
+        <!-- Total Decks -->
+        <div class="col-xl-3 col-md-6">
+            <div class="card border-0 shadow-sm h-100 text-center">
+                <div class="card-body py-4">
+                    <i class="bi bi-collection-play fs-1 text-primary mb-2"></i>
+                    <p class="text-muted mb-0">Unique Decks</p>
+                    <h3 class="fw-bold text-primary mb-1" data-kpi="total-decks">{{ total_decks }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Row -->
+    <div class="row g-4">
+        <!-- Players Table -->
+        <div class="col-lg-8">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-transparent border-0 pb-0">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-person-lines-fill me-2"></i>Player Winrates (Top 10)
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0" id="dashboardPlayerTable">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th>Player</th>
+                                    <th class="text-end">Games</th>
+                                    <th class="text-end">Wins</th>
+                                    <th class="text-end">Winrate</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="4" class="text-center py-4">
+                                        <div class="d-flex flex-column align-items-center gap-2">
+                                            <div class="spinner-border text-primary" role="status" style="width: 2rem; height: 2rem;">
+                                                <span class="visually-hidden">Loading player stats...</span>
+                                            </div>
+                                            <small class="text-muted">Loading player stats...</small>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Column -->
+        <div class="col-lg-4">
+            <div class="row g-3 h-100">
+                <!-- Deck Color Distribution (Simple WUBRG → Full Names) -->
+                <div class="col-12">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-transparent border-0 pb-0">
+                            <h6 class="card-title mb-0">
+                                <i class="bi bi-palette2 me-1"></i>
+                                <span id="deckChartTitle">WUBRG Colors</span>
+                            </h6>
+                        </div>
+                        <div class="card-body p-3">
+                            <div id="deckColorPieChart" class="w-100" style="min-height: 220px;">
+                                <div id="deckColorLoading" class="text-center py-3 text-muted d-flex flex-column align-items-center gap-2">
+                                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <small>Deck colors...</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Game Color Identities (Izzet, Golgari, etc.) -->
+                <div class="col-12">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-transparent border-0 pb-0">
+                            <h6 class="card-title mb-0">
+                                <i class="bi bi-pie-chart me-1"></i>
+                                <span id="gameChartTitle">Commander Identities</span>
+                            </h6>
+                        </div>
+                        <div class="card-body p-3">
+                            <div id="gameColorPieChart" class="w-100" style="min-height: 220px;">
+                                <div id="gameColorLoading" class="text-center py-3 text-muted d-flex flex-column align-items-center gap-2">
+                                    <div class="spinner-border spinner-border-sm text-success" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <small>Game identities...</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="d-flex gap-2 flex-wrap">
+                <a href="{{ url_for('main.all_player_stats') }}" class="btn btn-outline-primary btn-sm">
+                    <i class="bi bi-people"></i> View All Players
+                </a>
+                <a href="{{ url_for('main.all_deck_stats') }}" class="btn btn-outline-success btn-sm">
+                    <i class="bi bi-collection-play"></i> All Decks
+                </a>
+                <a href="{{ url_for('main.game_results') }}" class="btn btn-outline-info btn-sm">
+                    <i class="bi bi-journal-text"></i> Game Log
+                </a>
+                {% if current_user.is_authenticated and current_user.is_admin %}
+                <a href="{{ url_for('main.add_game') }}" class="btn btn-primary btn-sm">
+                    <i class="bi bi-plus-circle"></i> Add Game
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', async function() {
+    const isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+    const commanderColors = {
+        // MONO COLORS (6)
+        'W': '#F9E79F',     // Plains - Light Gold [web:60]
+        'U': '#AED6F0',     // Island - Sky Blue [web:60]  
+        'B': '#2C3E50',     // Swamp - Dark Navy [web:60]
+        'R': '#E74C3C',     // Mountain - Crimson [web:60]
+        'G': '#27AE60',     // Forest - Forest Green [web:60]
+        'C': '#BDC3C7',     // Colorless - Artifact Silver [web:60]
+        
+        // 2-COLOR GUILDS (10)
+        'WU': '#D5F4E6',    // Bant/Azorius - Light Cyan
+        'WB': '#FADBD8',    // Orzhov - Light Rose
+        'WR': '#FFF2CC',    // Boros - Light Gold  
+        'WG': '#E8F6F3',    // Selesnya - Mint
+        'UB': '#B8E6F2',    // Dimir - Ice Blue
+        'UR': '#F4D03F',    // Izzet - Bright Yellow/Blue mix
+        'UG': '#D5F4E6',    // Simic - Cyan Green
+        'BR': '#F8C471',    // Rakdos - Dark Orange
+        'BG': '#D0F0C0',    // Golgari - Olive Green
+        'RG': '#F1948A',    // Gruul - Fire Orange
+        
+        // 3-COLOR SHARDS/WEDGES (10)
+        'WUB': '#E0E8F0',   // Esper - Cool Blue-White
+        'URW': '#FFF0B8',   // Jeskai - Warm Gold-White
+        'GWU': '#E8F5E8',   // Bant - Light Mint
+        'RWB': '#FAD7D7',   // Mardu - Light Red-White
+        'WBG': '#E8F0E8',   // Abzan - Sage Green-White
+        'UBR': '#B8D8F0',   // Grixis - Dark Blue-Red
+        'GUR': '#E0F0D8',   // Temur - Bright Green-Blue
+        'BGU': '#C0E8D8',   // Sultai - Teal Green
+        'BRG': '#E8C8B8',   // Jund - Muddy Brown
+        'RGW': '#F0E8D8',   // Naya - Light Gold-Green
+        
+        // 4-COLOR (5)
+        'WUBR': '#E8D8F0',  // Artifice (Breya) Yore - Purple-Gold
+        'WUBG': '#D8E8D0',  // Yore-Tiller / Witch - Sage Blue-Green
+        'WURG': '#F0E0D8',  // Lightsworn / Ink - Gold-White-Blue
+        'UBRG': '#C8D8C0',  // Rogue / Glint - Dark Teal
+        'WBRG': '#D8E0D0',  // Wilderness / Dune - Sage Red-Green
+        
+        // 5-COLOR (1)
+        'WUBRG': '#F4E4BC'  // 5-Color - Golden
+    };
+    
+    try {
+        console.log('🌟 Loading MTG Dashboard...');
+        
+        // Fetch ALL dashboard data simultaneously
+        const [kpisRes, playersRes, wubrgRes, identitiesRes] = await Promise.all([
+            fetch('/api/dashboard/kpis'),
+            fetch('/api/players'),
+            fetch('/api/dashboard/colors'),           // WUBRG single colors
+            fetch('/api/dashboard/commander-identities')  // Izzet, Golgari combos
+        ]);
+
+        const kpis = await kpisRes.json();
+        const players = await playersRes.json();
+        const wubrgColors = await wubrgRes.json();     // White: 15, Blue: 12
+        const commanderIdentities = await identitiesRes.json();  // Izzet: 8, Golgari: 5
+
+        
+        console.log('📊 KPIs:', kpis);
+        console.log('👥 Players:', players.length);
+        console.log('🎨 Deck Colors:', wubrgColors);
+        console.log('⚔️ Game Colors:', commanderIdentities);
+        
+        // 1. Update KPIs instantly
+        document.querySelector('[data-kpi="total-games"]').textContent = kpis.total_games || 0;
+        document.querySelector('[data-kpi="top-deck-wins"]').textContent = kpis.top_deck_wins || 0;
+        document.querySelector('[data-kpi="top-deck-name"]').textContent = kpis.top_deck_name || 'None';
+        document.querySelector('[data-kpi="avg-winrate"]').textContent = 
+            kpis.avg_winrate ? (kpis.avg_winrate * 100).toFixed(1) + '%' : '0%';
+        document.querySelector('[data-kpi="player-count"]').textContent = kpis.player_count || 0;
+        
+        // 2. Player table (top 10 from YOUR existing API)
+        const topPlayers = (players || []).slice(0, 10);
+        const playerTbody = document.querySelector('#dashboardPlayerTable tbody');
+        if (playerTbody && topPlayers.length > 0) {
+            playerTbody.innerHTML = topPlayers.map(p => `
+                <tr>
+                    <td class="fw-semibold">${p.player_name || 'N/A'}</td>
+                    <td class="text-end text-muted">${p.total_games || 0}</td>
+                    <td class="text-end fw-bold text-success">${p.wins || 0}</td>
+                    <td class="text-end">
+                        <span class="badge bg-${(p.win_rate || 0) >= 0.5 ? 'success' : 'warning'} fs-6">
+                            ${((p.win_rate || 0) * 100).toFixed(1)}%
+                        </span>
+                    </td>
+                </tr>
+            `).join('');
+        } else {
+            playerTbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-muted">No player data</td></tr>';
+        }
+
+         // 3. WUBRG Distribution Chart (deckColors → wubrgColors)
+        if (wubrgColors && wubrgColors.length > 0) {
+            const deckChartContainer = document.querySelector("#deckColorPieChart");
+            const deckLoadingEl = document.getElementById('deckColorLoading');
+            const deckTitleEl = document.getElementById('deckChartTitle');
+            
+            if (deckLoadingEl) deckLoadingEl.remove();
+            if (deckTitleEl) deckTitleEl.textContent = 'WUBRG Distribution';
+
+            // CUSTOM MTG MANA COLORS by code
+            const mtgColors = {
+                'W': '#F5DEB3',  // Plains (Wheat/Antique White)
+                'U': '#4169E1',  // Island (Royal Blue)  
+                'B': '#2F4F4F',  // Swamp (Dark Slate Gray)
+                'R': '#DC143C',  // Mountain (Crimson)
+                'G': '#228B22',  // Forest (Forest Green)
+                'C': '#C0C0C0'   // Colorless (Silver)
+            };
+
+            // OFFICIAL Scryfall Commander Identity Colors
+
+
+            const chartColors = wubrgColors.map(c => commanderColors[c.color] || '#6c757d');
+
+            new ApexCharts(deckChartContainer, {
+                series: wubrgColors.map(c => c.count),
+                labels: wubrgColors.map(c => c.name),  // White, Blue, Black, Red, Green
+                chart: { type: 'donut', height: 220, toolbar: { show: false } },
+                theme: { mode: isDark ? 'dark' : 'light' },
+                colors: chartColors,
+                legend: { position: 'bottom', fontSize: '11px', horizontalAlign: 'center' },
+                dataLabels: { enabled: false },
+                plotOptions: { 
+                    pie: { 
+                        donut: { 
+                            size: '75%',
+                            labels: {
+                                show: true,
+                                value: {
+                                    fontSize: '14px',
+                                    formatter: val => `${Math.round(val)}%`
+                                }
+                            }
+                        }
+                    }
+                },
+                responsive: [{ breakpoint: 480, options: { chart: { height: 180 } } }]
+            }).render();
+            console.log('✅ WUBRG chart rendered');
+        }
+        
+        // 4. Commander Identities Chart (commanderIdentities)
+        if (commanderIdentities && commanderIdentities.length > 0) {
+            const gameChartContainer = document.querySelector("#gameColorPieChart");
+            const gameLoadingEl = document.getElementById('gameColorLoading');
+            const gameTitleEl = document.getElementById('gameChartTitle');
+            
+            if (gameLoadingEl) gameLoadingEl.remove();
+            if (gameTitleEl) gameTitleEl.textContent = 'Commander Identities';
+            
+            // Sort by count DESC + limit top 12
+            const topIdentities = commanderIdentities.sort((a, b) => b.count - a.count).slice(0, 12);
+            
+            const chartColors = topIdentities.map(c => {
+                const color = commanderColors[c.color];
+                if (!color) console.warn(`Missing color for ${c.color}: ${c.name}`);
+                return color || '#6c757d';
+            });
+            console.log('Chart colors:', chartColors); 
+        
+            new ApexCharts(gameChartContainer, {
+                series: [{ name: 'Decks', data: topIdentities.map(c => c.count) }],
+                chart: { type: 'bar', height: 300, toolbar: { show: false }, background: 'transparent' },
+                theme: { mode: isDark ? 'dark' : 'light' },
+                plotOptions: {
+                    bar: {
+                        horizontal: true,
+                        barHeight: '50%',
+                        columnWidth: '40%',
+                        borderRadius: 8,
+                        dataLabels: { position: 'top', style: { fontSize: '12px', fontWeight: 'bold' } },
+                        distributed: true
+                    }
+                },
+                dataLabels: {
+                    enabled: true,
+                    formatter: (val) => `${val}`,
+                    offsetX: -10,
+                    style: { colors: ['#000'] }
+                },
+                colors: chartColors, 
+                xaxis: {
+                    categories: topIdentities.map(c => c.name),
+                    labels: { formatter: (val) => `${val}`, style: { fontSize: '11px' } }
+                },
+                yaxis: { labels: { formatter: (val) => `${val}`, style: { fontSize: '11px' } } },
+                tooltip: {
+                    y: {
+                        formatter: (val, { dataPointIndex }) => 
+                            `${topIdentities[dataPointIndex].name}: ${val} decks`
+                    }
+                },
+                grid: { show: false },
+                responsive: [{
+                    breakpoint: 768,
+                    options: { chart: { height: 220 }, plotOptions: { bar: { barHeight: '60%' } } }
+                }]
+            }).render();
+            console.log('✅ Commander Identities bar chart rendered');
+        }
+        
+        document.querySelectorAll('.spinner-border').forEach(el => el.remove());
+        console.log('✅ Dashboard fully loaded!');
+        
+    } catch (error) {
+        console.error('❌ Dashboard error:', error);
+    }
+});
+</script>
+
 {% endblock %}

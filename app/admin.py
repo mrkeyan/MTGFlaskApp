@@ -46,10 +46,38 @@ class PlayerAdmin(SecureModelView):
     column_searchable_list = ['player_name']
 
 class DeckAdmin(SecureModelView):
-    column_list = ['deck_name', 'color_identity_rel', 'deck_owner', 
-                   'wins', 'win_rate']
-    column_filters = ['color_identity_rel', 'deck_owner']
-    column_searchable_list = ['deck_name']
+    column_list = ['deck_name', 'color_identity_code', 'color_identity_rel', 
+                   'deck_owner', 'total_games', 'wins', 'win_rate']
+    column_filters = ['color_identity_code', 'color_identity_rel', 'deck_owner']
+    column_searchable_list = ['deck_name', 'color_identity_code']
+    
+    column_default_sort = [('deck_name', True)]  # Database column only
+    
+    column_labels = {
+        'color_identity_code': 'Color Code',
+        'color_identity_rel': 'Identity',
+        'deck_owner': 'Owner',
+        'total_games': 'Games',
+        'wins': 'Wins',
+        'win_rate': 'Win Rate'
+    }
+    
+    # ✅ FIXED: 4 args (view, context, model, name)
+    column_formatters = {
+        'color_identity_code': lambda v, ctx, model, name: 
+            f'{model.color_identity_code}',
+            
+        'win_rate': lambda v, ctx, model, name: 
+            f'{model.win_rate:.1%}' if model.win_rate else '0%',
+            
+        'color_identity_rel': lambda v, ctx, model, name: 
+            model.color_identity_rel.identity_name if model.color_identity_rel else 'None',
+            
+        'deck_owner': lambda v, ctx, model, name: 
+            model.deck_owner.player_name if model.deck_owner else 'None'
+    }
+    
+    form_excluded_columns = ['wins', 'win_rate', 'total_games']
 
 class GameSessionAdmin(SecureModelView):
     column_list = ['game_date', 'gs_wincon', 'results']

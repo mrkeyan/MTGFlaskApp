@@ -4,7 +4,7 @@ import sqlalchemy as sa
 from sqlalchemy.orm import joinedload
 from app import db
 from app.main.forms import CombinedGameEntryForm, DeckForm, DeckEditForm, PlayerEditForm, GameSessionEditForm, PlayerAddForm
-from app.models import User, Player, Deck, GameResult, GameSession
+from app.models import User, Player, Deck, GameResult, GameSession, ColorIdentity,DeckColor
 from collections import defaultdict
 from app.main import bp
 
@@ -12,7 +12,13 @@ from app.main import bp
 @bp.route('/', methods=['GET', 'POST'])
 @bp.route('/index', methods=['GET', 'POST'])
 def index():
-    return render_template('index.html', title='Home Page')
+    total_games = db.session.query(sa.func.count(GameResult.id)).scalar() or 0
+    total_decks = Deck.query.count() or 0
+    
+    return render_template('index.html', 
+                         title='MTG Commander Dashboard',
+                         total_games=total_games,
+                         total_decks=total_decks)
 
 
 #Route for player data
@@ -270,8 +276,6 @@ def api_decks():
             'win_rate': win_rate,  # ← Raw number (0.42), not percentage string
             'edit_url': url_for('main.edit_deck', deck_id=deck.id)
         })
-    
-    print(f"API decks data: {deck_data[:2]}")  # Debug first 2 decks
     return jsonify(deck_data)
 
 @bp.route('/api/game_sessions')
@@ -302,3 +306,73 @@ def api_game_sessions():
         })
     
     return jsonify(list(sessions.values()))
+
+
+@bp.route('/api/dashboard/kpis')
+def api_dashboard_kpis():
+    """Single endpoint for all dashboard KPIs"""
+    # Total games
+    total_games = db.session.query(sa.func.count(GameResult.id)).scalar()
+    
+    # Unique players with games
+    player_count = db.session.query(sa.func.count(sa.distinct(GameResult.player_id))).scalar()
+    
+    # Average winrate
+    avg_winrate = db.session.query(
+        sa.func.avg((GameResult.finish == 1).cast(sa.Float))
+    ).filter(GameResult.finish.isnot(None)).scalar() or 0
+    
+    # Top deck
+    top_deck = db.session.query(
+        Deck.deck_name, 
+        sa.func.count(GameResult.id).label('wins')
+    ).join(GameResult, Deck.id == GameResult.deck_id)\
+     .filter(GameResult.finish == 1)\
+     .group_by(Deck.id).order_by(sa.desc('wins')).first()
+    
+    top_deck_wins = top_deck.wins if top_deck else 0
+    top_deck_name = top_deck.deck_name if top_deck else 'None'
+    
+    # Total decks
+    total_decks = Deck.query.count()
+    
+    return jsonify({
+        'total_games': total_games,
+        'player_count': player_count,
+        'avg_winrate': float(avg_winrate),  # 0.42 format
+        'top_deck_wins': top_deck_wins,
+        'top_deck_name': top_deck_name,
+        'total_decks': total_decks
+    })
+
+# 1st Chart: WUBRG from DeckColor (SINGLE COLORS)
+@bp.route('/api/dashboard/colors')
+def api_dashboard_colors():
+    """WUBRG distribution from Deck → DeckColor → SINGLE COLORS"""
+    color_data = db.session.query(
+        ColorIdentity.code,  # W, U, B, R, G, C
+        ColorIdentity.identity_name,  # White, Blue, Black, Red, Green, Colorless
+        sa.func.count(DeckColor.id).label('count')
+    ).join(DeckColor).group_by(ColorIdentity.code, ColorIdentity.identity_name)\
+     .having(ColorIdentity.code.in_(['W', 'U', 'B', 'R', 'G','C']))\
+     .order_by(sa.desc('count')).all()
+    
+    return jsonify([{
+        'color': c.code, 'name': c.identity_name, 'count': int(c.count)
+    } for c in color_data])
+
+# 2nd Chart: Commander Identities from Deck.color_identity_code
+@bp.route('/api/dashboard/commander-identities')
+def api_dashboard_commander_identities():
+    """Commander identities (Izzet, Golgari, etc.) from Deck.color_identity_code"""
+    identity_data = db.session.query(
+        ColorIdentity.code,  # WUR, BG, W, etc.
+        ColorIdentity.identity_name,  # Jeskai, Golgari, Mono-White
+        sa.func.count(Deck.id).label('count')
+    ).join(Deck, ColorIdentity.code == Deck.color_identity_code)\
+     .group_by(ColorIdentity.code, ColorIdentity.identity_name)\
+     .order_by(sa.desc('count')).all()
+    
+    return jsonify([{
+        'color': c.code, 'name': c.identity_name, 'count': int(c.count)
+    } for c in identity_data])

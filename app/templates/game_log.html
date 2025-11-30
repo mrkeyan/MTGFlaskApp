@@ -51,7 +51,7 @@
           {% for result in results %}
             <tr class="{{ stripe_class }}">
               <td class="col-2">{{ result.player.player_name }}</td>
-              <td class="col-4">{{ result.deck.deck_name }}</td>
+              <td class="col-4; commander-hover" data-card-name={{ result.deck.deck_name }}" style="cursor: pointer; color: #007bff;">{{ result.deck.deck_name }}</td>
               <td class="col-1">{{ result.finish }}</td>
               <td class="col-2">{% if result.eliminated_by %}{{ result.eliminated_by.player_name }}{% else %}—{% endif %}</td>
             </tr>
@@ -68,5 +68,6 @@
 {% endfor %}
     </tbody>
   </table>
+  <div id="card-hover-popper" class="card-hover-preview" style="display: none;"></div>
 </div>
 {% endblock %}
