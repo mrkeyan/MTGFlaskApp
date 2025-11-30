@@ -310,14 +310,21 @@ def api_game_sessions():
 
 @bp.route('/api/dashboard/kpis')
 def api_dashboard_kpis():
-    total_games = db.session.query(sa.func.count(GameResult.id)).scalar()
-    player_count = db.session.query(sa.func.count(sa.distinct(GameResult.player_id))).scalar()
+    """Single endpoint for all dashboard KPIs"""
+    # Total games
+    total_games = db.session.query(sa.func.count(GameResult.id)).scalar() or 0
+    
+    # Unique players with games
+    player_count = db.session.query(sa.func.count(sa.distinct(GameResult.player_id))).scalar() or 0
+    
+    # Average winrate
     avg_winrate = db.session.query(
         sa.func.avg((GameResult.finish == 1).cast(sa.Float))
     ).filter(GameResult.finish.isnot(None)).scalar() or 0
     
-    # ✅ FIXED: Proper JOIN for top deck
-    top_deck = db.session.query(
+    # ✅ FIXED: Group by both ID and name
+    top_deck_result = db.session.query(
+        Deck.id,
         Deck.deck_name, 
         sa.func.count(GameResult.id).label('wins')
     ).join(GameResult, Deck.id == GameResult.deck_id)\
@@ -325,17 +332,19 @@ def api_dashboard_kpis():
      .group_by(Deck.id, Deck.deck_name)\
      .order_by(sa.desc('wins')).first()
     
-    top_deck_wins = top_deck.wins if top_deck else 0
-    top_deck_name = top_deck.deck_name if top_deck else 'None'
-    total_decks = Deck.query.count()
+    top_deck_wins = top_deck_result.wins if top_deck_result else 0
+    top_deck_name = top_deck_result.deck_name if top_deck_result else 'None'
+    
+    # Total decks
+    total_decks = Deck.query.count() or 0
     
     return jsonify({
-        'total_games': total_games or 0,
-        'player_count': player_count or 0,
+        'total_games': total_games,
+        'player_count': player_count,
         'avg_winrate': float(avg_winrate),
         'top_deck_wins': top_deck_wins,
         'top_deck_name': top_deck_name,
-        'total_decks': total_decks or 0
+        'total_decks': total_decks
     })
 
 # 1st Chart: WUBRG from DeckColor (SINGLE COLORS)
